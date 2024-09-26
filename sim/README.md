@@ -1,6 +1,6 @@
 # Simulation
 
-My best attempt at a phyics engine + 3D renderer built from the bottom up for the
+My best attempt at a physics engine + 3D renderer built from the bottom up for the
 most control for our specific use case. Written in pure C with a few dependecies.
 
 Along side the simulation, I will be most likely be building up a C library for
