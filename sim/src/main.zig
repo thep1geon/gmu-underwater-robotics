@@ -2,25 +2,26 @@ const std = @import("std");
 const gl = @import("gl");
 const glfw = @import("glfw");
 
+const Shader = @import("Shader.zig");
+const object = @import("object.zig");
+const VAO = object.VAO;
+const VBO = object.VBO;
+const EBO = object.EBO;
+
 var procs: gl.ProcTable = undefined;
 
-const vertex_shader =
-    \\#version 330 core
-    \\layout (location = 0) in vec3 pos;
-    \\void main() {
-    \\    gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);
-    \\}
-;
-
-const fragment_shader =
-    \\#version 330 core
-    \\out vec4 fragcolor;
-    \\void main() {
-    \\    fragcolor = vec4(0.75, 0.2, 0.65, 1.0);
-    \\}
-;
-
 pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var arena = std.heap.ArenaAllocator.init(gpa.allocator());
+
+    defer {
+        arena.deinit();
+
+        if (gpa.deinit() == .leak) {
+            std.log.err("{}\n", .{gpa.detectLeaks()});
+        }
+    }
+
     if (!glfw.init(.{})) {
         std.log.err("failed to initialize GLFW: {?s}", .{glfw.getErrorString()});
         std.process.exit(1);
@@ -28,7 +29,7 @@ pub fn main() !void {
     defer glfw.terminate();
 
     // Create our window
-    const window_ = glfw.Window.create(640, 480, "Hello, mach-glfw!", null, null, .{
+    const window_ = glfw.Window.create(640, 480, "Physics Simulation", null, null, .{
         .resizable = false,
         .context_version_major = 3,
         .context_version_minor = 3,
@@ -53,105 +54,53 @@ pub fn main() !void {
     gl.Viewport(0, 0, 640, 480);
 
     const vertices = [_]f32{
-        0.5,  0.5,  0.0,
-        0.5,  -0.5, 0.0,
-        -0.5, -0.5, 0.0,
-        -0.5, 0.5,  0.0,
+        -0.5, -0.5, 0.0, 1.0, 0.0, 0.0,
+        0.5,  -0.5, 0.0, 0.0, 1.0, 0.0,
+        0,    0.5,  0.0, 0.0, 0.0, 1.0,
     };
 
     const indices = [_]gl.uint{
-        0, 1, 3,
-        1, 2, 3,
+        0, 1, 2,
     };
 
-    var VBO: gl.uint = undefined;
-    var VAO: gl.uint = undefined;
-    var EBO: gl.uint = undefined;
+    var vao = VAO.init();
+    defer vao.deinit();
 
-    gl.GenVertexArrays(1, @ptrCast(&VAO));
-    defer gl.DeleteVertexArrays(1, @ptrCast(&VAO));
+    var ebo = EBO.init(&indices);
+    defer ebo.deinit();
 
-    gl.GenBuffers(1, @ptrCast(&VBO));
-    defer gl.DeleteBuffers(1, @ptrCast(&VBO));
+    var vbo = VBO.init(&vertices);
+    defer vbo.deinit();
 
-    gl.GenBuffers(1, @ptrCast(&EBO));
-    defer gl.DeleteBuffers(1, @ptrCast(&EBO));
+    vao.bind();
+    defer vao.unbind();
 
-    gl.BindVertexArray(VAO);
+    vbo.bind();
+    ebo.bind();
 
-    gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO);
-    gl.BufferData(
-        gl.ELEMENT_ARRAY_BUFFER,
-        @sizeOf(gl.uint) * indices.len,
-        &indices,
-        gl.STATIC_DRAW,
-    );
-
-    gl.BindBuffer(gl.ARRAY_BUFFER, VBO);
-    gl.BufferData(
-        gl.ARRAY_BUFFER,
-        @sizeOf(f32) * vertices.len,
-        &vertices,
-        gl.STATIC_DRAW,
-    );
-
-    var success: i32 = 0;
-    var info_log = [_]u8{0} ** 512;
-
-    const vert = gl.CreateShader(gl.VERTEX_SHADER);
-    defer gl.DeleteShader(vert);
-    gl.ShaderSource(vert, 1, @ptrCast(&vertex_shader), null);
-    gl.CompileShader(vert);
-    gl.GetShaderiv(vert, gl.COMPILE_STATUS, &success);
-
-    if (success == 0) {
-        gl.GetShaderInfoLog(vert, 512, null, &info_log);
-        glfw.terminate();
-        std.debug.print("{s}\n", .{info_log});
-        return error.ShaderFailedCompilation;
-    }
-
-    const frag = gl.CreateShader(gl.FRAGMENT_SHADER);
-    defer gl.DeleteShader(frag);
-    gl.ShaderSource(frag, 1, @ptrCast(&fragment_shader), null);
-    gl.CompileShader(frag);
-    gl.GetShaderiv(frag, gl.COMPILE_STATUS, &success);
-
-    if (success == 0) {
-        gl.GetShaderInfoLog(frag, 512, null, &info_log);
-        glfw.terminate();
-        std.debug.print("{s}\n", .{info_log});
-        return error.ShaderFailedCompilation;
-    }
-
-    const program = gl.CreateProgram();
-    defer gl.DeleteProgram(program);
-    gl.AttachShader(program, vert);
-    gl.AttachShader(program, frag);
-    gl.LinkProgram(program);
-    gl.GetProgramiv(program, gl.LINK_STATUS, &success);
-
-    if (success == 0) {
-        gl.GetProgramInfoLog(program, 512, null, &info_log);
-        glfw.terminate();
-        std.debug.print("{s}\n", .{info_log});
-        return error.ProgramFailedLinking;
-    }
-    gl.UseProgram(program);
-
-    gl.VertexAttribPointer(0, 3, gl.FLOAT, 0, 3 * @sizeOf(f32), 0);
     gl.EnableVertexAttribArray(0);
+    gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 6 * @sizeOf(f32), 0);
 
-    gl.BindBuffer(gl.ARRAY_BUFFER, 0);
-    gl.BindVertexArray(0);
-    gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0);
+    gl.EnableVertexAttribArray(1);
+    gl.VertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 6 * @sizeOf(f32), 3 * @sizeOf(f32));
 
-    gl.BindVertexArray(VAO);
-    gl.ClearColor(0.3, 0.7, 0.27, 1);
+    const shader = try Shader.init(
+        arena.allocator(),
+        "shaders/vert.vert",
+        "shaders/frag.frag",
+    );
+    defer shader.deinit();
+    shader.use();
+
+    gl.ClearColor(0.02, 0.2, 0.27, 1);
     while (!window.shouldClose()) {
         gl.Clear(gl.COLOR_BUFFER_BIT);
 
-        gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, 0);
+        const time = glfw.getTime();
+        shader.set_float("time", @floatCast(time));
+        shader.use();
+
+        gl.DrawElements(gl.TRIANGLES, @intCast(ebo.indices.len), gl.UNSIGNED_INT, 0);
 
         window.swapBuffers();
         glfw.pollEvents();
