@@ -1,25 +1,25 @@
 # Simulation
 
-My best attempt at a physics engine + 3D renderer built from the bottom up for the
-most control for our specific use case. Written in pure C with a few dependecies.
+Physics engine built from the bottom up with nothing but OpenGL, Mach-GLFW 
+(GLFW bindings for Zig), and whatever linear algerba library I choose, for the 
+sole purpose of being used for GMU's PLUNGE Robotics team.
 
-Along side the simulation, I will be most likely be building up a C library for
-common utilities that'll probably get its own repo eventually.
+## Why
 
-## Dependecies (so far)
+The main goal of this project is to program and test an ROV before actually 
+having one.
 
--   GNU Make
--   OpenGL (duh)
--   GLFW (windowing)
+### Why from scratch?
 
-## Contribution
+Building it from the bottom allows us (me) to have the most control over what
+happens and what gets implemented. Using existing programs could make it difficult
+to fit our needs.
 
-As stated in the main README for the repo, adhere to coding styles or your code
-might not be merged.
 
-# NOTE
+### Why Zig?
 
-If I am the only person working on this, I get to make all the decisions.
-I am writting it targeting GNU/Linux platforms, I couldn't care less for Windows.
-
-So if you want to run it, either fix the code or use Linux.
+Originally the project was started in C but after much thought (15 minutes), the
+executive decision to rewrite what we had (a triangle) in Zig was made. Zig is
+very similar to C with "a sane standard libary" and plenty of other user-friendly
+features that C simply lacks. Portablity was also a concern. Zig offers the abilty
+to cross-compile out of the box, while cross-compiling C is more difficult.

@@ -1,2 +1,2 @@
-sim/bin
-sim/obj
+sim/zig-out/
+sim/.zig-cache/
