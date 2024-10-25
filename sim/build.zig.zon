@@ -31,6 +31,10 @@
             .url = "git+https://github.com/castholm/zigglgen#d21e1b9dc8320fbb3a843e08570bcc6e1b70b960",
             .hash = "122058ef10f75fd34b89b163cb290c77044b281561270c39423fa55946ffbde6c2d7",
         },
+        .zalgebra = .{
+            .url = "git+https://github.com/kooparse/zalgebra.git#e36116987d11c4a28ab8a03ab62d71be8b81404a",
+            .hash = "12200e1b17e15217623e36563e459164fff4debb8210ea9d027d8548aca6d30f0811",
+        },
     },
     .paths = .{
         "build.zig",

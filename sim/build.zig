@@ -28,6 +28,14 @@ pub fn build(b: *std.Build) void {
     // Import the generated module.
     exe.root_module.addImport("gl", gl_bindings);
 
+    const zalgebra_dep = b.dependency("zalgebra", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.root_module.addImport("zalgebra", zalgebra_dep.module("zalgebra"));
+
+    exe.linkLibC();
+
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);
