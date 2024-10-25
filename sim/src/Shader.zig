@@ -1,5 +1,6 @@
 const std = @import("std");
 const gl = @import("gl");
+const za = @import("zalgebra");
 
 const Self = @This();
 
@@ -10,7 +11,11 @@ id: gl.uint,
 vert: gl.uint,
 frag: gl.uint,
 
-pub fn init(allocator: std.mem.Allocator, vert_filename: []const u8, frag_filename: []const u8) !Self {
+pub fn init(
+    allocator: std.mem.Allocator,
+    vert_filename: []const u8,
+    frag_filename: []const u8,
+) !Self {
     const vert_source = try slurpfile(allocator, vert_filename);
     defer allocator.free(vert_source);
 
@@ -18,7 +23,7 @@ pub fn init(allocator: std.mem.Allocator, vert_filename: []const u8, frag_filena
     defer gl.DeleteShader(vert_shader);
     gl.ShaderSource(vert_shader, 1, @ptrCast(&vert_source), null);
     gl.CompileShader(vert_shader);
-    try check_compilation(vert_shader);
+    try check_compilation(vert_filename, vert_shader);
 
     const frag_source = try slurpfile(allocator, frag_filename);
     defer allocator.free(frag_source);
@@ -27,7 +32,7 @@ pub fn init(allocator: std.mem.Allocator, vert_filename: []const u8, frag_filena
     defer gl.DeleteShader(frag_shader);
     gl.ShaderSource(frag_shader, 1, @ptrCast(&frag_source), null);
     gl.CompileShader(frag_shader);
-    try check_compilation(frag_shader);
+    try check_compilation(frag_filename, frag_shader);
 
     const program = gl.CreateProgram();
     gl.AttachShader(program, vert_shader);
@@ -59,6 +64,15 @@ pub fn set_float(self: *const Self, name: []const u8, value: f32) void {
     gl.Uniform1f(gl.GetUniformLocation(self.id, @ptrCast(name.ptr)), value);
 }
 
+pub fn set_mat4(self: *const Self, name: []const u8, value: *za.Mat4) void {
+    gl.UniformMatrix4fv(
+        gl.GetUniformLocation(self.id, @ptrCast(name.ptr)),
+        1,
+        gl.FALSE,
+        @ptrCast(value.getData()),
+    );
+}
+
 fn check_linking(program: gl.uint) !void {
     gl.GetProgramiv(program, gl.COMPILE_STATUS, &success);
 
@@ -69,12 +83,12 @@ fn check_linking(program: gl.uint) !void {
     }
 }
 
-fn check_compilation(shader: gl.uint) !void {
+fn check_compilation(filename: []const u8, shader: gl.uint) !void {
     gl.GetShaderiv(shader, gl.COMPILE_STATUS, &success);
 
     if (success == 0) {
         gl.GetShaderInfoLog(shader, 512, null, &log);
-        std.log.err("{s}\n", .{log});
+        std.log.err("{s}: {s}\n", .{ filename, log });
         return error.ShaderFailedCompilation;
     }
 }
