@@ -1,8 +1,9 @@
 # Simulation
 
 Physics engine built from the bottom up with nothing but OpenGL, Mach-GLFW 
-(GLFW bindings for Zig), and whatever linear algerba library I choose, for the 
-sole purpose of being used for GMU's PLUNGE Robotics team.
+(GLFW bindings for Zig), and Zalgebra for linear algebra, for the 
+sole purpose of being used for GMU's PLUNGE Robotics team. But making it a more
+general physics engine is part of the plan.
 
 ## Why
 
