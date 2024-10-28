@@ -24,3 +24,36 @@ executive decision to rewrite what we had (a triangle) in Zig was made. Zig is
 very similar to C with "a sane standard libary" and plenty of other user-friendly
 features that C simply lacks. Portablity was also a concern. Zig offers the abilty
 to cross-compile out of the box, while cross-compiling C is more difficult.
+
+## TODO
+Generalized roadmap to give this project some direction
+
+Lowkey could turn this into a game engine at some point :blush:
+
+[ ] Maybes
+    [ ] Mulitple cameras / camera switcher
+    [ ] Camera is a physics body and interacts with the world
+[ ] Make renderer more complete
+    [x] Go 3D
+    [ ] Finish Vertex type integration
+        [ ] Vertex type
+        [ ] Move from float arrays to Vertex Array
+    [ ] Get an obj importer working
+    [ ] Mesh type
+    [ ] Texture type
+[ ] Some actual physics
+    [ ] General
+        [ ] Body type
+        [ ] Bodies that obey the laws of physics
+        [ ] Collision handler
+            [ ] Cube-cube
+            [ ] Cube-sphere
+            [ ] Sphere-sphere
+            [ ] Cube-point
+            [ ] Sphere-point
+    [ ] Rigid Body
+    [ ] Softbody
+        [ ] Jelly truck
+    [ ] Cloth?
+    [ ] Slime?
+    [ ] Fluid?
