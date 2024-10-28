@@ -30,30 +30,30 @@ Generalized roadmap to give this project some direction
 
 Lowkey could turn this into a game engine at some point :blush:
 
-[ ] Maybes
-    [ ] Mulitple cameras / camera switcher
-    [ ] Camera is a physics body and interacts with the world
-[ ] Make renderer more complete
-    [x] Go 3D
-    [ ] Finish Vertex type integration
-        [ ] Vertex type
-        [ ] Move from float arrays to Vertex Array
-    [ ] Get an obj importer working
-    [ ] Mesh type
-    [ ] Texture type
-[ ] Some actual physics
-    [ ] General
-        [ ] Body type
-        [ ] Bodies that obey the laws of physics
-        [ ] Collision handler
-            [ ] Cube-cube
-            [ ] Cube-sphere
-            [ ] Sphere-sphere
-            [ ] Cube-point
-            [ ] Sphere-point
-    [ ] Rigid Body
-    [ ] Softbody
-        [ ] Jelly truck
-    [ ] Cloth?
-    [ ] Slime?
-    [ ] Fluid?
+- [ ] Maybes
+    - [ ] Mulitple cameras / camera switcher
+    - [ ] Camera is a physics body and interacts with the world
+- [ ] Make renderer more complete
+    - [x] Go 3D
+    - [ ] Finish Vertex type integration
+        - [ ] Vertex type
+        - [ ] Move from float arrays to Vertex Array
+    - [ ] Get an obj importer working
+    - [ ] Mesh type
+    - [ ] Texture type
+- [ ] Some actual physics
+    - [ ] General
+        - [ ] Body type
+        - [ ] Bodies that obey the laws of physics
+        - [ ] Collision handler
+            - [ ] Cube-cube
+            - [ ] Cube-sphere
+            - [ ] Sphere-sphere
+            - [ ] Cube-point
+            - [ ] Sphere-point
+    - [ ] Rigid Body
+    - [ ] Softbody
+        - [ ] Jelly truck
+    - [ ] Cloth?
+    - [ ] Slime?
+    - [ ] Fluid?
