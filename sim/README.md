@@ -30,21 +30,23 @@ Generalized roadmap to give this project some direction
 
 Lowkey could turn this into a game engine at some point :blush:
 
-- [ ] Maybes
-    - [ ] Mulitple cameras / camera switcher
-    - [ ] Camera is a physics body and interacts with the world
 - [ ] Make renderer more complete
     - [x] Go 3D
+        - [x] Camera stuff and all that jazz
     - [ ] Finish Vertex type integration
         - [ ] Vertex type
         - [ ] Move from float arrays to Vertex Array
     - [ ] Get an obj importer working
     - [ ] Mesh type
     - [ ] Texture type
+    - [ ] Add some gui (cImGui or zgui :shrug:)
 - [ ] Some actual physics
     - [ ] General
         - [ ] Body type
+            - [ ] Material type
+            - [ ] Properties type
         - [ ] Bodies that obey the laws of physics
+        - [ ] The idea of a scene (a collection of bodies that interact with eachother)
         - [ ] Collision handler
             - [ ] Cube-cube
             - [ ] Cube-sphere
@@ -57,3 +59,9 @@ Lowkey could turn this into a game engine at some point :blush:
     - [ ] Cloth?
     - [ ] Slime?
     - [ ] Fluid?
+- [ ] Maybes
+    - [ ] Camera
+        - [ ] Multiple cameras
+            - [ ] Camera type
+            - [ ] Camera manager
+        - [ ] Camera is a physics body and interacts with the world
