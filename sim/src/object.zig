@@ -1,6 +1,7 @@
 const std = @import("std");
-const glfw = @import("glfw");
-const gl = @import("gl");
+const glfw = @import("zglfw");
+const gl = @import("zopengl").bindings;
+const Vertex = @import("Vertex.zig");
 
 // *----------------*
 // All things objects
@@ -8,11 +9,11 @@ const gl = @import("gl");
 
 // Vertex Array Object
 pub const VAO = struct {
-    id: gl.uint,
+    id: gl.Uint,
 
     pub fn init() VAO {
-        var id: gl.uint = undefined;
-        gl.GenVertexArrays(1, @ptrCast(&id));
+        var id: gl.Uint = undefined;
+        gl.genVertexArrays(1, @ptrCast(&id));
 
         return .{
             .id = id,
@@ -20,16 +21,28 @@ pub const VAO = struct {
     }
 
     pub fn deinit(self: *VAO) void {
-        gl.DeleteVertexArrays(1, @ptrCast(&self.id));
+        gl.deleteVertexArrays(1, @ptrCast(&self.id));
     }
 
     pub fn bind(self: *const VAO) void {
-        gl.BindVertexArray(self.id);
+        gl.bindVertexArray(self.id);
+
+        // Position
+        gl.enableVertexAttribArray(0);
+        gl.vertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 8 * @sizeOf(f32), null);
+
+        // uv
+        gl.enableVertexAttribArray(1);
+        gl.vertexAttribPointer(1, 2, gl.FLOAT, gl.FALSE, 8 * @sizeOf(f32), @ptrFromInt(3 * @sizeOf(f32)));
+
+        // normal
+        gl.enableVertexAttribArray(2);
+        gl.vertexAttribPointer(2, 3, gl.FLOAT, gl.FALSE, 8 * @sizeOf(f32), @ptrFromInt(5 * @sizeOf(f32)));
     }
 
     pub fn unbind(self: *const VAO) void {
         _ = self;
-        gl.BindVertexArray(0);
+        gl.bindVertexArray(0);
     }
 };
 
@@ -39,12 +52,12 @@ pub const VAO = struct {
 // defer gl.deletebuffers(1, @ptrcast(&vbo));
 pub const VBO = struct {
     bound: bool,
-    id: gl.uint,
-    vertices: []const f32,
+    id: gl.Uint,
+    vertices: []const Vertex,
 
-    pub fn init(data: []const f32) VBO {
-        var id: gl.uint = undefined;
-        gl.GenBuffers(1, @ptrCast(&id));
+    pub fn init(data: []const Vertex, allocator: std.mem.Allocator) VBO {
+        var id: gl.Uint = undefined;
+        gl.genBuffers(1, @ptrCast(&id));
 
         var vbo = VBO{
             .id = id,
@@ -52,47 +65,48 @@ pub const VBO = struct {
             .bound = false,
         };
 
-        var bound_buffer: gl.uint = undefined;
-        gl.GetIntegerv(gl.ARRAY_BUFFER, @ptrCast(&bound_buffer));
+        var bound_buffer: gl.Uint = undefined;
+        gl.getIntegerv(gl.ARRAY_BUFFER, @ptrCast(&bound_buffer));
 
         vbo.bind();
 
-        vbo.set_data(vbo.vertices) catch @panic("UNREACHABLE");
+        vbo.send_data(vbo.vertices, allocator) catch @panic("UNREACHABLE");
 
-        gl.BindBuffer(gl.ARRAY_BUFFER, bound_buffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, bound_buffer);
 
         return vbo;
     }
 
     pub fn deinit(self: *VBO) void {
-        gl.DeleteBuffers(1, @ptrCast(&self.id));
+        gl.deleteBuffers(1, @ptrCast(&self.id));
     }
 
     pub fn bind(self: *VBO) void {
         self.bound = true;
-        gl.BindBuffer(gl.ARRAY_BUFFER, self.id);
+        gl.bindBuffer(gl.ARRAY_BUFFER, self.id);
     }
 
     pub fn unbind(self: *VBO) void {
         self.bound = false;
-        gl.BindBuffer(gl.ARRAY_BUFFER, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, 0);
     }
 
-    pub fn set_data(self: *const VBO, verts: []const f32) !void {
+    pub fn send_data(self: *const VBO, verts: []const Vertex, allocator: std.mem.Allocator) !void {
+        _ = allocator;
         if (!self.bound) return error.BufferNotBound;
-        gl.BufferData(gl.ARRAY_BUFFER, @intCast(@sizeOf(f32) * verts.len), verts.ptr, gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, @intCast(@sizeOf(f32) * verts.len), verts.ptr, gl.STATIC_DRAW);
     }
 };
 
 // Element Buffer Object
 pub const EBO = struct {
-    id: gl.uint,
-    indices: []const gl.uint,
+    id: gl.Uint,
+    indices: []const gl.Uint,
     bound: bool,
 
-    pub fn init(data: []const gl.uint) EBO {
-        var id: gl.uint = undefined;
-        gl.GenBuffers(1, @ptrCast(&id));
+    pub fn init(data: []const gl.Uint) EBO {
+        var id: gl.Uint = undefined;
+        gl.genBuffers(1, @ptrCast(&id));
 
         var ebo = EBO{
             .id = id,
@@ -100,34 +114,34 @@ pub const EBO = struct {
             .bound = false,
         };
 
-        var bound_buffer: gl.uint = undefined;
-        gl.GetIntegerv(gl.ELEMENT_ARRAY_BUFFER, @ptrCast(&bound_buffer));
+        var bound_buffer: gl.Uint = undefined;
+        gl.getIntegerv(gl.ELEMENT_ARRAY_BUFFER, @ptrCast(&bound_buffer));
 
         ebo.bind();
 
         ebo.set_data(ebo.indices) catch @panic("UNREACHABLE");
 
-        gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, bound_buffer);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bound_buffer);
 
         return ebo;
     }
 
     pub fn deinit(self: *EBO) void {
-        gl.DeleteBuffers(1, @ptrCast(&self.id));
+        gl.deleteBuffers(1, @ptrCast(&self.id));
     }
 
     pub fn bind(self: *EBO) void {
         self.bound = true;
-        gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, self.id);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, self.id);
     }
 
     pub fn unbind(self: *EBO) void {
         self.bound = false;
-        gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0);
     }
 
-    pub fn set_data(self: *const EBO, indices: []const gl.uint) !void {
+    pub fn set_data(self: *const EBO, indices: []const gl.Uint) !void {
         if (!self.bound) return error.BufferNotBound;
-        gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, @intCast(@sizeOf(gl.uint) * indices.len), indices.ptr, gl.STATIC_DRAW);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, @intCast(@sizeOf(gl.Uint) * indices.len), indices.ptr, gl.STATIC_DRAW);
     }
 };

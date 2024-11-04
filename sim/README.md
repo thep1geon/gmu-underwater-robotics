@@ -1,9 +1,12 @@
 # Simulation
 
-Physics engine built from the bottom up with nothing but OpenGL, Mach-GLFW 
-(GLFW bindings for Zig), and Zalgebra for linear algebra, for the 
-sole purpose of being used for GMU's PLUNGE Robotics team. But making it a more
-general physics engine is part of the plan.
+Physics engine built from the bottom up with only a few dependenices. 
+- zopengl (OpenGL bindings and loader for Zig)
+- zglfw (GLFW bindings for Zig)
+- zui (Dear ImGUI bindings for Zig)
+- Zalgebra (linear algebra library for Zig)
+This project has the   sole purpose of being used for GMU's PLUNGE Robotics team. 
+But making it a more general physics engine is part of the plan.
 
 ## Why
 
@@ -39,7 +42,7 @@ Lowkey could turn this into a game engine at some point :blush:
     - [ ] Get an obj importer working
     - [ ] Mesh type
     - [ ] Texture type
-    - [ ] Add some gui (cImGui or zgui :shrug:)
+    - [x] Add some gui (cImGui or zgui :shrug:)
 - [ ] Some actual physics
     - [ ] General
         - [ ] Body type
