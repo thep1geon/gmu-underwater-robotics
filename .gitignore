@@ -1,2 +1,3 @@
 sim/zig-out/
 sim/.zig-cache/
+sim/imgui.ini

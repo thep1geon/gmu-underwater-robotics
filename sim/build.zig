@@ -18,6 +18,10 @@ pub fn build(b: *std.Build) void {
     });
     exe.root_module.addImport("zalgebra", zalgebra_dep.module("zalgebra"));
 
+    const zstbi = b.dependency("zstbi", .{});
+    exe.root_module.addImport("zstbi", zstbi.module("root"));
+    exe.linkLibrary(zstbi.artifact("zstbi"));
+
     const zgui = b.dependency("zgui", .{
         .shared = false,
         .with_implot = true,

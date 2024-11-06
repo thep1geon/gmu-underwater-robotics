@@ -30,6 +30,7 @@
         .zopengl = .{ .path = "./libs/zopengl" },
         .zgui = .{ .path = "libs/zgui" },
         .zglfw = .{ .path = "./libs/zglfw" },
+        .zstbi = .{ .path = "./libs/zstbi" },
         .@"system-sdk" = .{ .path = "./libs/system-sdk" },
     },
     .paths = .{
