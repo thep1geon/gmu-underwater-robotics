@@ -1,7 +1,9 @@
 const glfw = @import("zglfw");
-const std = @import("std");
 const zgui = @import("zgui");
 const zstbi = @import("zstbi");
+
+const std = @import("std");
+const pi = std.math.pi;
 
 const zopengl = @import("zopengl");
 const gl = zopengl.bindings;
@@ -24,6 +26,48 @@ const EBO = objects.EBO;
 const Texture = @import("Texture.zig");
 const Vertex = @import("Vertex.zig");
 const Shader = @import("Shader.zig");
+
+var sens: i32 = 5;
+fn show_gui() void {
+    zgui.setNextWindowPos(.{ .x = 20.0, .y = 20.0, .cond = .appearing });
+    zgui.setNextWindowSize(.{ .w = 200, .h = 150, .cond = .appearing });
+
+    if (zgui.begin("Debug Information", .{})) {
+        if (zgui.collapsingHeader("Camera", .{})) {
+            if (zgui.sliderFloat("pitch", .{
+                .v = &camera.pitch,
+                .min = -(89 * pi / 180.0),
+                .max = 89 * pi / 180.0,
+            })) {
+                camera.update();
+            }
+            if (zgui.sliderFloat("yaw", .{
+                .v = &camera.yaw,
+                .min = -2 * pi,
+                .max = 2 * pi,
+            })) {
+                camera.update();
+            }
+            _ = zgui.sliderFloat("speed", .{
+                .v = &camera.speed,
+                .min = 0.001,
+                .max = 5,
+            });
+        }
+
+        if (zgui.collapsingHeader("Mouse", .{})) {
+            if (zgui.sliderInt("sensitity", .{
+                .v = &sens,
+                .min = 1,
+                .max = 10,
+            })) {
+                mouse.sensitivity = @as(f32, @floatFromInt(sens)) / 1000.0;
+            }
+        }
+    }
+
+    zgui.end();
+}
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -59,6 +103,7 @@ pub fn main() !void {
     _ = window.setSizeCallback(callbacks.window_size_callback);
     _ = window.setCursorPosCallback(callbacks.mouse_callback);
     _ = window.setScrollCallback(callbacks.scroll_callback);
+    _ = window.setMouseButtonCallback(callbacks.mouse_button_callback);
 
     mouse.last_x = @as(f32, @floatFromInt(window.getSize()[0])) / @as(f32, 2);
     mouse.last_y = @as(f32, @floatFromInt(window.getSize()[1])) / @as(f32, 2);
@@ -160,14 +205,16 @@ pub fn main() !void {
 
     gl.clearColor(0.02, 0.2, 0.27, 1);
     time.glfw = 0;
+
     while (!window.shouldClose()) {
+        glfw.pollEvents();
+
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         if (!settings.paused) {
             time.glfw = @floatCast(glfw.getTime());
             time.delta = time.glfw - time.last_frame;
             time.last_frame = time.glfw;
-            camera.update_pos();
         } else {
             glfw.setTime(time.glfw);
         }
@@ -181,6 +228,8 @@ pub fn main() !void {
             camera.pos.add(camera.front),
             camera.up,
         );
+
+        camera.update_pos();
 
         shader.set_mat4("view", &camera.view);
         camera.projection = za.perspective(camera.fov, camera.aspect_ratio, 0.1, 100.0);
@@ -221,18 +270,8 @@ pub fn main() !void {
         );
 
         if (settings.paused) {
-            zgui.setNextWindowPos(.{ .x = 20.0, .y = 20.0, .cond = .appearing });
-            zgui.setNextWindowSize(.{ .w = -1.0, .h = -1.0, .cond = .appearing });
-
-            if (zgui.begin("My window", .{})) {
-                zgui.bulletText("Hello, GUI!", .{});
-
-                if (zgui.button("Print 'Hello, World!'", .{})) {
-                    std.debug.print("Hello, World!\n", .{});
-                }
-            }
-
-            zgui.end();
+            // All the GUI sh*t goes here
+            show_gui();
         }
 
         zgui.showMetricsWindow(null);
@@ -240,6 +279,5 @@ pub fn main() !void {
         zgui.backend.draw();
 
         window.swapBuffers();
-        glfw.pollEvents();
     }
 }

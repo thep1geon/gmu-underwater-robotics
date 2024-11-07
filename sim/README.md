@@ -36,12 +36,12 @@ Lowkey could turn this into a game engine at some point :blush:
 - [ ] Make renderer more complete
     - [x] Go 3D
         - [x] Camera stuff and all that jazz
-    - [ ] Finish Vertex type integration
-        - [ ] Vertex type
-        - [ ] Move from float arrays to Vertex Array
+    - [x] Finish Vertex type integration
+        - [x] Vertex type
+        - [x] Move from float arrays to Vertex Array
     - [ ] Get an obj importer working
     - [ ] Mesh type
-    - [ ] Texture type
+    - [x] Texture type
     - [x] Add some gui (cImGui or zgui :shrug:)
 - [ ] Some actual physics
     - [ ] General

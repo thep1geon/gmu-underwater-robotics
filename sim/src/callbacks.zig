@@ -28,7 +28,7 @@ pub fn mouse_callback(window: *glfw.Window, x_pos: f64, y_pos: f64) callconv(.C)
     mouse.last_x = @floatCast(x_pos);
     mouse.last_y = @floatCast(y_pos);
 
-    if (settings.paused) {
+    if (settings.paused and !keys.right_mouse) {
         return;
     }
 
@@ -38,6 +38,11 @@ pub fn mouse_callback(window: *glfw.Window, x_pos: f64, y_pos: f64) callconv(.C)
     camera.pitch += y_offset;
     camera.yaw += x_offset;
 
+    if (camera.pitch >= std.math.degreesToRadians(89))
+        camera.pitch = std.math.degreesToRadians(89);
+    if (camera.pitch <= -std.math.degreesToRadians(89))
+        camera.pitch = -std.math.degreesToRadians(89);
+
     camera.front.xMut().* = @cos(camera.yaw) * @cos(camera.pitch);
     camera.front.yMut().* = @sin(camera.pitch);
     camera.front.zMut().* = @sin(camera.yaw) * @cos(camera.pitch);
@@ -46,10 +51,6 @@ pub fn mouse_callback(window: *glfw.Window, x_pos: f64, y_pos: f64) callconv(.C)
 
 pub fn scroll_callback(window: *glfw.Window, x_offset: f64, y_offset: f64) callconv(.C) void {
     _ = .{ window, x_offset };
-
-    if (settings.paused) {
-        return;
-    }
 
     camera.fov -= @floatCast(y_offset);
 
@@ -110,6 +111,23 @@ pub fn key_callback(
             .s => keys.s = false,
             .a => keys.a = false,
             .d => keys.d = false,
+            else => {},
+        }
+    }
+}
+pub fn mouse_button_callback(window: *glfw.Window, button: glfw.MouseButton, action: glfw.Action, mods: glfw.Mods) callconv(.C) void {
+    _ = .{ window, mods };
+
+    if (action == .press) {
+        switch (button) {
+            .right => keys.right_mouse = true,
+            else => {},
+        }
+    }
+
+    if (action == .release) {
+        switch (button) {
+            .right => keys.right_mouse = false,
             else => {},
         }
     }

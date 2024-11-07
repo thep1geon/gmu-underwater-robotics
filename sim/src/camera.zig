@@ -1,12 +1,13 @@
 const gl = @import("zopengl").bindings;
 const za = @import("zalgebra");
 const keys = @import("keys.zig");
+const camera = @import("camera.zig");
 const time = @import("time.zig");
 const Vec3 = za.Vec3;
 
 pub var speed: f32 = 5.0;
 
-pub var yaw: f32 = -90.0;
+pub var yaw: f32 = 0;
 pub var pitch: f32 = 0;
 
 pub var fov: f32 = 90;
@@ -61,4 +62,11 @@ pub fn update_pos() void {
             Vec3.norm(Vec3.cross(front, up)).scale(speed * time.delta),
         );
     }
+}
+
+pub fn update() void {
+    camera.front.xMut().* = @cos(camera.yaw) * @cos(camera.pitch);
+    camera.front.yMut().* = @sin(camera.pitch);
+    camera.front.zMut().* = @sin(camera.yaw) * @cos(camera.pitch);
+    camera.front = camera.front.norm();
 }
