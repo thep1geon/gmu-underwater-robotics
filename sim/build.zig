@@ -12,29 +12,33 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const glfw_dep = b.dependency("mach-glfw", .{
-        .target = target,
-        .optimize = optimize,
-    });
-    exe.root_module.addImport("glfw", glfw_dep.module("mach-glfw"));
-
-    const gl_bindings = @import("zigglgen").generateBindingsModule(b, .{
-        .api = .gl,
-        .version = .@"3.3",
-        .profile = .core,
-        .extensions = &.{},
-    });
-
-    // Import the generated module.
-    exe.root_module.addImport("gl", gl_bindings);
-
     const zalgebra_dep = b.dependency("zalgebra", .{
         .target = target,
         .optimize = optimize,
     });
     exe.root_module.addImport("zalgebra", zalgebra_dep.module("zalgebra"));
 
+    const zstbi = b.dependency("zstbi", .{});
+    exe.root_module.addImport("zstbi", zstbi.module("root"));
+    exe.linkLibrary(zstbi.artifact("zstbi"));
+
+    const zgui = b.dependency("zgui", .{
+        .shared = false,
+        .with_implot = true,
+        .backend = .glfw_opengl3,
+    });
+    exe.root_module.addImport("zgui", zgui.module("root"));
+    exe.linkLibrary(zgui.artifact("imgui"));
+
+    const zopengl = b.dependency("zopengl", .{});
+    exe.root_module.addImport("zopengl", zopengl.module("root"));
+
     exe.linkLibC();
+    exe.linkLibCpp();
+
+    const zglfw = b.dependency("zglfw", .{});
+    exe.root_module.addImport("zglfw", zglfw.module("root"));
+    exe.linkLibrary(zglfw.artifact("glfw"));
 
     b.installArtifact(exe);
 

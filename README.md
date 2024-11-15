@@ -28,15 +28,15 @@ suggestion, we'd love to hear it.
 
 Will most likely be written in C, but this will be discussed later as well.
 
+If you want to help with programming the float let Maverick know, he'll help you
+
 (More information will be coming eventually)
 
 ## Simulation
 
 Hand crafted physics engine written in Zig with a few dependencies:
 
-- OpenGL binding for Zig for the graphics
-- Mach-GLFW for cross-platform windowing and input
-- Zalgebra for linear algebra (basically glm for Zig)
+**See the README for the simulation**
 
 :heart:
 
@@ -45,8 +45,6 @@ makes a tangible ROV. This will also be helpful for prototyping and testing
 if we don't have access to a pool.
 
 # Info
-
-We will not consider writing anything in Rust in Maverick's time as CSO.
 
 Everything is subject to change at the discretion of the current CSO 
 (Chief Software Officer) for the benefit of the team.

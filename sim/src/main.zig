@@ -1,267 +1,164 @@
+const glfw = @import("zglfw");
+const zgui = @import("zgui");
+const zstbi = @import("zstbi");
+
 const std = @import("std");
-const gl = @import("gl");
-const glfw = @import("glfw");
+const pi = std.math.pi;
+
+const zopengl = @import("zopengl");
+const gl = zopengl.bindings;
+
 const za = @import("zalgebra");
 const Vec3 = za.Vec3;
+const Vec2 = za.Vec2;
 
+const keys = @import("keys.zig");
+const camera = @import("camera.zig");
+const mouse = @import("mouse.zig");
+const time = @import("time.zig");
+const callbacks = @import("callbacks.zig");
+const settings = @import("settings.zig");
+const objects = @import("objects.zig");
+const VAO = objects.VAO;
+const VBO = objects.VBO;
+const EBO = objects.EBO;
+
+const Texture = @import("Texture.zig");
+const Vertex = @import("Vertex.zig");
 const Shader = @import("Shader.zig");
-const object = @import("object.zig");
-const VAO = object.VAO;
-const VBO = object.VBO;
-const EBO = object.EBO;
 
-var procs: gl.ProcTable = undefined;
+var sens: i32 = 5;
+fn show_gui() void {
+    zgui.setNextWindowPos(.{ .x = 20.0, .y = 20.0, .cond = .appearing });
+    zgui.setNextWindowSize(.{ .w = 200, .h = 150, .cond = .appearing });
 
-var wireframe: bool = false;
-var pause: bool = false;
-
-var delta_time: f32 = 0;
-var last_frame: f32 = 0;
-
-const mouse = struct {
-    var last_x: f32 = 300;
-    var last_y: f32 = 300;
-    var sensitivity: f32 = 0.005;
-    var first: bool = true;
-};
-
-const keys = struct {
-    var w: bool = false;
-    var s: bool = false;
-    var a: bool = false;
-    var d: bool = false;
-};
-
-const camera = struct {
-    var speed: f32 = 2.5;
-
-    var yaw: f32 = -90.0;
-    var pitch: f32 = 0;
-
-    var fov: f32 = 90;
-
-    var pos = Vec3.new(0.0, 0.0, 3.0);
-    var target = Vec3.new(0.0, 0.0, 0.0);
-    var direction: Vec3 = undefined;
-    var right: Vec3 = undefined;
-    var up: Vec3 = undefined;
-    var front = Vec3.new(0.0, 0.0, -1.0);
-
-    pub fn init() void {
-        direction = Vec3.norm(pos.sub(target));
-        right = Vec3.norm(Vec3.cross(Vec3.up(), direction));
-        up = Vec3.cross(direction, right);
-    }
-
-    pub fn update() void {
-        // Update the postion based on the currently pressed keys
-        if (keys.w) {
-            camera.pos = camera.pos.add(camera.front.scale(camera.speed * delta_time));
+    if (zgui.begin("Debug Information", .{})) {
+        if (zgui.collapsingHeader("Camera", .{})) {
+            if (zgui.sliderFloat("pitch", .{
+                .v = &camera.pitch,
+                .min = -(89 * pi / 180.0),
+                .max = 89 * pi / 180.0,
+            })) {
+                camera.update();
+            }
+            if (zgui.sliderFloat("yaw", .{
+                .v = &camera.yaw,
+                .min = -2 * pi,
+                .max = 2 * pi,
+            })) {
+                camera.update();
+            }
+            _ = zgui.sliderFloat("speed", .{
+                .v = &camera.speed,
+                .min = 0.001,
+                .max = 5,
+            });
         }
-        if (keys.s) {
-            camera.pos = camera.pos.sub(camera.front.scale(camera.speed * delta_time));
-        }
-        if (keys.a) {
-            camera.pos = camera.pos.sub(
-                Vec3.norm(Vec3.cross(camera.front, camera.up)).scale(camera.speed * delta_time),
-            );
-        }
-        if (keys.d) {
-            camera.pos = camera.pos.add(
-                Vec3.norm(Vec3.cross(camera.front, camera.up)).scale(camera.speed * delta_time),
-            );
-        }
-    }
-};
 
-fn window_size_callback(window: glfw.Window, width: i32, height: i32) void {
-    _ = window;
-    gl.Viewport(0, 0, @intCast(width), @intCast(height));
-}
-
-fn mouse_callback(window: glfw.Window, x_pos: f64, y_pos: f64) void {
-    _ = window;
-
-    if (mouse.first) {
-        mouse.last_x = @floatCast(x_pos);
-        mouse.last_y = @floatCast(y_pos);
-        mouse.first = false;
-    }
-
-    var x_offset: f32 = @floatCast(x_pos - mouse.last_x);
-    var y_offset: f32 = @floatCast(mouse.last_y - y_pos);
-    mouse.last_x = @floatCast(x_pos);
-    mouse.last_y = @floatCast(y_pos);
-
-    x_offset *= mouse.sensitivity;
-    y_offset *= mouse.sensitivity;
-
-    camera.pitch += y_offset;
-    camera.yaw += x_offset;
-
-    if (camera.pitch >= 89.0)
-        camera.pitch = 89;
-    if (camera.pitch <= -89.0)
-        camera.pitch = -89;
-
-    camera.front.xMut().* = @cos(camera.yaw) * @cos(camera.pitch);
-    camera.front.yMut().* = @sin(camera.pitch);
-    camera.front.zMut().* = @sin(camera.yaw) * @cos(camera.pitch);
-    camera.front = camera.front.norm();
-}
-
-fn scroll_callback(window: glfw.Window, x_offset: f64, y_offset: f64) void {
-    _ = .{ window, x_offset };
-
-    camera.fov -= @floatCast(y_offset);
-
-    const lower: f32 = 1;
-    const upper: f32 = 90;
-
-    if (camera.fov < lower)
-        camera.fov = lower;
-    if (camera.fov > upper)
-        camera.fov = upper;
-}
-
-fn key_callback(
-    window: glfw.Window,
-    key: glfw.Key,
-    scancode: i32,
-    action: glfw.Action,
-    mods: glfw.Mods,
-) void {
-    _ = .{ window, scancode, mods };
-
-    if (action == .press) {
-        switch (key) {
-            .t => {
-                if (wireframe) {
-                    gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE);
-                } else {
-                    gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL);
-                }
-
-                wireframe = !wireframe;
-            },
-            .space => {
-                pause = !pause;
-
-                if (pause) {
-                    window.setCursorPosCallback(null);
-                    window.setScrollCallback(null);
-                    window.setInputModeCursor(.normal);
-                } else {
-                    window.setCursorPosCallback(mouse_callback);
-                    window.setScrollCallback(scroll_callback);
-                    window.setInputModeCursor(.disabled);
-                    window.setCursorPos(@floatCast(mouse.last_x), @floatCast(mouse.last_y));
-                }
-            },
-            .q => window.setShouldClose(true),
-            .w => keys.w = true,
-            .s => keys.s = true,
-            .a => keys.a = true,
-            .d => keys.d = true,
-            else => {},
+        if (zgui.collapsingHeader("Mouse", .{})) {
+            if (zgui.sliderInt("sensitity", .{
+                .v = &sens,
+                .min = 1,
+                .max = 10,
+            })) {
+                mouse.sensitivity = @as(f32, @floatFromInt(sens)) / 1000.0;
+            }
         }
     }
 
-    if (action == .release) {
-        switch (key) {
-            .w => keys.w = false,
-            .s => keys.s = false,
-            .a => keys.a = false,
-            .d => keys.d = false,
-            else => {},
-        }
-    }
+    zgui.end();
 }
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    var arena = std.heap.ArenaAllocator.init(gpa.allocator());
 
-    defer {
-        arena.deinit();
+    defer if (gpa.deinit() == .leak) {
+        std.log.err("{}\n", .{gpa.detectLeaks()});
+    };
 
-        if (gpa.deinit() == .leak) {
-            std.log.err("{}\n", .{gpa.detectLeaks()});
-        }
-    }
+    zstbi.init(gpa.allocator());
+    defer zstbi.deinit();
+    zstbi.setFlipVerticallyOnLoad(true);
 
-    if (!glfw.init(.{})) {
-        std.log.err("failed to initialize GLFW: {?s}", .{glfw.getErrorString()});
+    glfw.init() catch {
+        std.log.err("failed to initialize GLFW: ", .{});
         std.process.exit(1);
-    }
+    };
     defer glfw.terminate();
 
     // Create our window
-    const window_ = glfw.Window.create(600, 600, "Physics Simulation", null, null, .{
-        .resizable = false,
-        .context_version_major = 3,
-        .context_version_minor = 3,
-        .opengl_profile = .opengl_core_profile,
-    });
-    if (window_ == null) {
-        std.log.err("failed to create GLFW window: {?s}", .{glfw.getErrorString()});
+    glfw.windowHint(.resizable, 0);
+    glfw.windowHint(.context_version_major, 3);
+    glfw.windowHint(.context_version_minor, 3);
+    glfw.windowHintTyped(.opengl_profile, .opengl_core_profile);
+    const window = glfw.Window.create(800, 800, "Physics Simulation", null) catch {
+        var str = "failed to create GLFW window";
+        std.log.err("failed to create GLFW window: {any}", .{glfw.maybeErrorString(@ptrCast(&str))});
         std.process.exit(1);
-    }
-    const window = window_.?;
+    };
     defer window.destroy();
 
     // Setting the callbacks
-    window.setKeyCallback(key_callback);
-    window.setSizeCallback(window_size_callback);
-    window.setCursorPosCallback(mouse_callback);
-    window.setScrollCallback(scroll_callback);
+    _ = window.setKeyCallback(callbacks.key_callback);
+    _ = window.setSizeCallback(callbacks.window_size_callback);
+    _ = window.setCursorPosCallback(callbacks.mouse_callback);
+    _ = window.setScrollCallback(callbacks.scroll_callback);
+    _ = window.setMouseButtonCallback(callbacks.mouse_button_callback);
 
-    window.setInputModeCursor(.disabled);
+    mouse.last_x = @as(f32, @floatFromInt(window.getSize()[0])) / @as(f32, 2);
+    mouse.last_y = @as(f32, @floatFromInt(window.getSize()[1])) / @as(f32, 2);
+
+    window.setInputMode(.cursor, glfw.Cursor.Mode.disabled);
 
     glfw.makeContextCurrent(window);
-    defer glfw.makeContextCurrent(null);
 
-    // Initalizing OpenGL
-    if (!procs.init(glfw.getProcAddress)) return error.InitFailed;
-
-    gl.makeProcTableCurrent(&procs);
-    defer gl.makeProcTableCurrent(null);
+    try zopengl.loadCoreProfile(glfw.getProcAddress, 3, 3);
 
     camera.init();
 
-    gl.Viewport(
+    zgui.init(gpa.allocator());
+    defer zgui.deinit();
+
+    zgui.backend.init(window);
+    defer zgui.backend.deinit();
+
+    zgui.getStyle().setColorsDark();
+    const font = zgui.io.addFontFromFile("resources/caskaydia-cove.ttf", 16);
+    zgui.io.setDefaultFont(font);
+
+    gl.viewport(
         0,
         0,
-        @intCast(window.getSize().width),
-        @intCast(window.getSize().height),
+        @intCast(window.getSize()[0]),
+        @intCast(window.getSize()[1]),
     );
 
-    const vertices = [_]f32{
-        // front
-        0.5, 0.5, 0.5, 1.0, 0.0, 0.0, // top right
-        -0.5, 0.5, 0.5, 0.0, 1.0, 0.0, // top left
-        0.5, -0.5, 0.5, 0.0, 0.0, 1.0, // bottom right
-        -0.5, -0.5, 0.5, 1.0, 0.0, 1.0, // bottom left
-        // back
-        0.5, 0.5, -0.5, 1.0, 1.0, 0.0, // top right
-        -0.5, 0.5, -0.5, 0.0, 1.0, 0.0, // top left
-        0.5, -0.5, -0.5, 0.0, 0.0, 1.0, // bottom right
-        -0.5, -0.5, -0.5, 1.0, 0.0, 1.0, // bottom left
+    const vertices = [_]Vertex{
+        Vertex.init(
+            Vec3.new(0.5, 0.5, 0),
+            Vec2.new(1, 1),
+            Vec3.new(1, 0, 0),
+        ),
+        Vertex.init(
+            Vec3.new(0.5, -0.5, 0),
+            Vec2.new(1, 0),
+            Vec3.new(0, 1, 0),
+        ),
+        Vertex.init(
+            Vec3.new(-0.5, -0.5, 0),
+            Vec2.new(0, 0),
+            Vec3.new(0, 0, 1),
+        ),
+        Vertex.init(
+            Vec3.new(-0.5, 0.5, 0),
+            Vec2.new(0, 1),
+            Vec3.new(1, 1, 0),
+        ),
     };
 
-    const indices = [_]gl.uint{
+    const indices = [_]gl.Uint{
         0, 1, 3,
-        0, 3, 2,
-        4, 6, 0,
-        2, 6, 0,
-        6, 7, 4,
-        5, 7, 4,
-        3, 1, 7,
-        5, 1, 7,
-        5, 4, 1,
-        0, 4, 1,
-        2, 3, 7,
-        2, 6, 7,
+        1, 2, 3,
     };
 
     var vao = VAO.init();
@@ -270,7 +167,7 @@ pub fn main() !void {
     var ebo = EBO.init(&indices);
     defer ebo.deinit();
 
-    var vbo = VBO.init(&vertices);
+    var vbo = VBO.init(&vertices, gpa.allocator());
     defer vbo.deinit();
 
     vao.bind();
@@ -279,88 +176,108 @@ pub fn main() !void {
     vbo.bind();
     ebo.bind();
 
-    gl.EnableVertexAttribArray(0);
-    gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 6 * @sizeOf(f32), 0);
-
-    gl.EnableVertexAttribArray(1);
-    gl.VertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 6 * @sizeOf(f32), 3 * @sizeOf(f32));
-
     const shader = try Shader.init(
-        arena.allocator(),
+        gpa.allocator(),
         "shaders/vert.vert",
         "shaders/frag.frag",
     );
     defer shader.deinit();
     shader.use();
 
-    gl.Enable(gl.DEPTH_TEST);
+    const brick_tex = try Texture.init(
+        "resources/wall.jpg",
+        .jpg,
+        &shader,
+    );
+    const smile_tex = try Texture.init(
+        "resources/awesomeface.png",
+        .png,
+        &shader,
+    );
+
+    brick_tex.use();
+    smile_tex.use();
+
+    gl.enable(gl.DEPTH_TEST);
 
     var model = za.Mat4.identity();
     model = model.rotate(-55.0, Vec3.new(1.0, 0.0, 0.0));
 
-    var view = za.Mat4.identity();
-    view = za.Mat4.lookAt(
-        camera.pos,
-        camera.pos.add(camera.front),
-        camera.up,
-    );
+    gl.clearColor(0.02, 0.2, 0.27, 1);
+    time.glfw = 0;
 
-    const window_width: f32 = @floatFromInt(window.getSize().width);
-    const window_height: f32 = @floatFromInt(window.getSize().height);
-    const aspect_ratio: f32 = @floatCast(window_width / window_height);
-    var projection = za.perspective(camera.fov, aspect_ratio, 0.1, 100.0);
-
-    var direction = Vec3.zero();
-    direction.xMut().* = @cos(camera.yaw) * @cos(camera.pitch);
-    direction.yMut().* = @sin(camera.pitch);
-    direction.zMut().* = @sin(camera.yaw) * @cos(camera.pitch);
-
-    gl.ClearColor(0.02, 0.2, 0.27, 1);
-    var time: f64 = 0;
     while (!window.shouldClose()) {
-        if (!pause) {
-            gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        glfw.pollEvents();
 
-            time = glfw.getTime();
-            delta_time = @floatCast(time - last_frame);
-            last_frame = @floatCast(time);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-            shader.set_float("time", @floatCast(time));
-            model = za.Mat4.identity();
-            model = model.rotate(@floatCast(time * 64), Vec3.new(1.0, 0.5, 1.0));
-            shader.set_mat4("model", &model);
-            view = za.Mat4.lookAt(
-                camera.pos,
-                camera.pos.add(camera.front),
-                camera.up,
-            );
-            camera.update();
-            shader.set_mat4("view", &view);
-            projection = za.perspective(camera.fov, aspect_ratio, 0.1, 100.0);
-            shader.set_mat4("projection", &projection);
-            gl.DrawElements(gl.TRIANGLES, @intCast(ebo.indices.len), gl.UNSIGNED_INT, 0);
-
-            model = model.translate(Vec3.new(0, 2, -1.3));
-            model = model.rotate(@floatCast(time * 32), Vec3.new(-1.0, 0.5, 0.0));
-            shader.set_mat4("model", &model);
-            gl.DrawElements(gl.TRIANGLES, @intCast(ebo.indices.len), gl.UNSIGNED_INT, 0);
-
-            model = model.translate(Vec3.new(3, -3, -1));
-            model = model.rotate(@floatCast(time * 128), Vec3.new(0, 0.5, -0.5));
-            shader.set_mat4("model", &model);
-            gl.DrawElements(gl.TRIANGLES, @intCast(ebo.indices.len), gl.UNSIGNED_INT, 0);
-
-            model = model.translate(Vec3.new(-2, 3.2, 3));
-            model = model.rotate(65, Vec3.new(1.0, 0.5, -0.5));
-            model = model.rotate(@floatCast(time * 64), Vec3.new(1.0, 0, 0.5));
-            shader.set_mat4("model", &model);
-            gl.DrawElements(gl.TRIANGLES, @intCast(ebo.indices.len), gl.UNSIGNED_INT, 0);
-
-            window.swapBuffers();
+        if (!settings.paused) {
+            time.glfw = @floatCast(glfw.getTime());
+            time.delta = time.glfw - time.last_frame;
+            time.last_frame = time.glfw;
+        } else {
+            glfw.setTime(time.glfw);
         }
 
-        glfw.setTime(time);
+        shader.set_float("time", @floatCast(time.glfw));
+        model = za.Mat4.identity();
+        model = model.rotate(@floatCast(time.glfw * 64), Vec3.new(1.0, 0.5, 1.0));
+        shader.set_mat4("model", &model);
+        camera.view = za.Mat4.lookAt(
+            camera.pos,
+            camera.pos.add(camera.front),
+            camera.up,
+        );
 
-        glfw.pollEvents();
+        camera.update_pos();
+
+        shader.set_mat4("view", &camera.view);
+        camera.projection = za.perspective(camera.fov, camera.aspect_ratio, 0.1, 100.0);
+        shader.set_mat4("projection", &camera.projection);
+        gl.drawElements(gl.TRIANGLES, @intCast(ebo.indices.len), gl.UNSIGNED_INT, @ptrFromInt(0));
+
+        model = model.translate(Vec3.new(0, 2, -1.3));
+        model = model.rotate(@floatCast(time.glfw * 32), Vec3.new(-1.0, 0.5, 0.0));
+        shader.set_mat4("model", &model);
+        gl.drawElements(gl.TRIANGLES, @intCast(ebo.indices.len), gl.UNSIGNED_INT, @ptrFromInt(0));
+
+        model = model.translate(Vec3.new(3, -3, -1));
+        model = model.rotate(@floatCast(time.glfw * 128), Vec3.new(0, 0.5, -0.5));
+        shader.set_mat4("model", &model);
+        gl.drawElements(gl.TRIANGLES, @intCast(ebo.indices.len), gl.UNSIGNED_INT, @ptrFromInt(0));
+
+        model = model.translate(Vec3.new(-2, 3.2, 3));
+        model = model.rotate(65, Vec3.new(1.0, 0.5, -0.5));
+        model = model.rotate(@floatCast(time.glfw * 64), Vec3.new(1.0, 0, 0.5));
+        shader.set_mat4("model", &model);
+        gl.drawElements(gl.TRIANGLES, @intCast(ebo.indices.len), gl.UNSIGNED_INT, @ptrFromInt(0));
+
+        model = model.translate(Vec3.new(5, -4, 0));
+        model = model.rotate(32, Vec3.new(0.5, 0, 0));
+        model = model.rotate(@floatCast(time.glfw * 32), Vec3.new(0.5, 0, 0.5));
+        shader.set_mat4("model", &model);
+        gl.drawElements(gl.TRIANGLES, @intCast(ebo.indices.len), gl.UNSIGNED_INT, @ptrFromInt(0));
+
+        model = model.translate(Vec3.new(-4, 3.2, 3));
+        model = model.rotate(-128, Vec3.new(0, 0.5, 0));
+        model = model.rotate(@floatCast(time.glfw * 256), Vec3.new(0, 0.9, 0));
+        shader.set_mat4("model", &model);
+        gl.drawElements(gl.TRIANGLES, @intCast(ebo.indices.len), gl.UNSIGNED_INT, @ptrFromInt(0));
+
+        zgui.backend.newFrame(
+            @intCast(window.getSize()[0]),
+            @intCast(window.getSize()[1]),
+        );
+
+        if (settings.paused) {
+            // All the GUI sh*t goes here
+            show_gui();
+        }
+
+        zgui.showMetricsWindow(null);
+
+        zgui.backend.draw();
+
+        window.swapBuffers();
     }
 }
